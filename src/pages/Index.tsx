@@ -67,6 +67,13 @@ const Index = () => {
       const data = await response.json();
       console.log("Received data:", data);
       
+      // Validate the response has the required structure
+      if (!data.courses || !Array.isArray(data.courses)) {
+        throw new Error(
+          `Invalid data format from N8N. Expected: {studentName, studentId, overallPercentage, totalClasses, classesAttended, courses: [], lastUpdated}. Received: ${JSON.stringify(data)}`
+        );
+      }
+      
       setAttendanceData(data);
       
       toast({
