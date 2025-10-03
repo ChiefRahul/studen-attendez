@@ -67,14 +67,23 @@ const Index = () => {
       const data = await response.json();
       console.log("Received data:", data);
       
-      // Validate the response has the required structure
-      if (!data.courses || !Array.isArray(data.courses)) {
-        throw new Error(
-          `Invalid data format from N8N. Expected: {studentName, studentId, overallPercentage, totalClasses, classesAttended, courses: [], lastUpdated}. Received: ${JSON.stringify(data)}`
-        );
-      }
+      // Transform N8N response to match our app's expected format
+      const transformedData: AttendanceData = {
+        studentName: data.Name || data.name,
+        studentId: data.id,
+        totalClasses: parseInt(data.totalclasses || data.totalClasses) || 0,
+        classesAttended: parseInt(data.classesattended || data.classesAttended) || 0,
+        overallPercentage: parseFloat(data.overallpercentage || data.overallPercentage) || 0,
+        lastUpdated: new Date().toLocaleDateString(),
+        courses: [{
+          courseName: data.subject,
+          present: parseInt(data.classesattended || data.classesAttended) || 0,
+          total: parseInt(data.totalclasses || data.totalClasses) || 0,
+          percentage: parseFloat(data.overallpercentage || data.overallPercentage) || 0
+        }]
+      };
       
-      setAttendanceData(data);
+      setAttendanceData(transformedData);
       
       toast({
         title: "Attendance data loaded",
