@@ -42,6 +42,8 @@ const Index = () => {
 
     setLoading(true);
     try {
+      console.log("Fetching attendance for:", studentName.trim());
+      
       const response = await fetch(
         "https://janvikela.app.n8n.cloud/webhook-test/3cbd135d-1d95-4ce5-b2da-15c0eccca3fd",
         {
@@ -53,11 +55,18 @@ const Index = () => {
         }
       );
 
+      console.log("Response status:", response.status);
+      console.log("Response ok:", response.ok);
+
       if (!response.ok) {
-        throw new Error("Failed to fetch attendance data");
+        const errorText = await response.text();
+        console.error("Response error:", errorText);
+        throw new Error(`Server returned ${response.status}: ${errorText}`);
       }
 
       const data = await response.json();
+      console.log("Received data:", data);
+      
       setAttendanceData(data);
       
       toast({
@@ -66,9 +75,16 @@ const Index = () => {
       });
     } catch (error) {
       console.error("Error fetching attendance:", error);
+      
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Unknown error occurred";
+      
       toast({
-        title: "Error loading attendance",
-        description: "Could not fetch attendance data. Please try again.",
+        title: "Connection Error",
+        description: errorMessage.includes("Failed to fetch") 
+          ? "Cannot connect to N8N webhook. Please check CORS settings in N8N."
+          : errorMessage,
         variant: "destructive",
       });
     } finally {
