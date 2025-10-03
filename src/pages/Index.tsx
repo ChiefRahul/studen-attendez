@@ -45,7 +45,7 @@ const Index = () => {
       console.log("Fetching attendance for:", studentName.trim());
       
       const response = await fetch(
-        "https://janvikela.app.n8n.cloud/webhook-test/3cbd135d-1d95-4ce5-b2da-15c0eccca3fd",
+        "https://janvikela.app.n8n.cloud/webhook/3cbd135d-1d95-4ce5-b2da-15c0eccca3fd",
         {
           method: "POST",
           headers: {
