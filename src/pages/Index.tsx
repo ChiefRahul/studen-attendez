@@ -65,20 +65,27 @@ const Index = () => {
       }
 
       const responseData = await response.json();
-      console.log("Received data:", responseData);
+      console.log("✅ Received raw data:", JSON.stringify(responseData, null, 2));
       
       // Handle array response - take first element
       const data = Array.isArray(responseData) ? responseData[0] : responseData;
-      console.log("Processing data:", data);
-      console.log("Has subjectAttendance?", !!data.subjectAttendance);
+      console.log("✅ Extracted data object:", JSON.stringify(data, null, 2));
+      
+      // Validate we have subjectAttendance
+      if (!data.subjectAttendance || typeof data.subjectAttendance !== 'object') {
+        console.error("❌ ERROR: Missing subjectAttendance in response!");
+        console.error("Expected format: { name, id, overallPercentage, subjectAttendance: {...} }");
+        console.error("Received:", data);
+        throw new Error("Invalid webhook response: missing subjectAttendance data. Please check your N8N workflow configuration.");
+      }
       
       // Transform subjectAttendance object into courses array
       const CLASSES_PER_SUBJECT = 20; // Assumed number of classes per subject
-      const courses: CourseData[] = Object.entries(data.subjectAttendance || {}).map(
+      const courses: CourseData[] = Object.entries(data.subjectAttendance).map(
         ([subjectName, percentage]: [string, any]) => {
           const percentageValue = typeof percentage === 'number' ? percentage : parseFloat(String(percentage)) || 0;
           const present = Math.round((percentageValue / 100) * CLASSES_PER_SUBJECT);
-          console.log(`Course: ${subjectName}, Percentage: ${percentageValue}, Present: ${present}`);
+          console.log(`✅ Course: ${subjectName}, Percentage: ${percentageValue}%, Present: ${present}/${CLASSES_PER_SUBJECT}`);
           return {
             courseName: subjectName,
             present: present,
@@ -88,7 +95,7 @@ const Index = () => {
         }
       );
       
-      console.log("Transformed courses:", courses);
+      console.log(`✅ Transformed ${courses.length} courses:`, courses);
       
       // Calculate overall stats
       const totalClasses = courses.length * CLASSES_PER_SUBJECT;
@@ -105,7 +112,7 @@ const Index = () => {
         courses: courses
       };
       
-      console.log("Final transformed data:", transformedData);
+      console.log("✅ Final data ready to display:", transformedData);
       
       setAttendanceData(transformedData);
       
