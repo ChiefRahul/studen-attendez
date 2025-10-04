@@ -64,23 +64,40 @@ const Index = () => {
         throw new Error(`Server returned ${response.status}: ${errorText}`);
       }
 
-      const data = await response.json();
-      console.log("Received data:", data);
+      const responseData = await response.json();
+      console.log("Received data:", responseData);
+      
+      // Handle array response - take first element
+      const data = Array.isArray(responseData) ? responseData[0] : responseData;
+      
+      // Transform subjectAttendance object into courses array
+      const CLASSES_PER_SUBJECT = 20; // Assumed number of classes per subject
+      const courses: CourseData[] = Object.entries(data.subjectAttendance || {}).map(
+        ([subjectName, percentage]: [string, any]) => {
+          const percentageValue = typeof percentage === 'number' ? percentage : parseFloat(String(percentage)) || 0;
+          const present = Math.round((percentageValue / 100) * CLASSES_PER_SUBJECT);
+          return {
+            courseName: subjectName,
+            present: present,
+            total: CLASSES_PER_SUBJECT,
+            percentage: percentageValue
+          };
+        }
+      );
+      
+      // Calculate overall stats
+      const totalClasses = courses.length * CLASSES_PER_SUBJECT;
+      const classesAttended = courses.reduce((sum, course) => sum + course.present, 0);
       
       // Transform N8N response to match our app's expected format
       const transformedData: AttendanceData = {
-        studentName: data.Name || data.name,
+        studentName: data.name || data.Name,
         studentId: data.id,
-        totalClasses: parseInt(data.totalclasses || data.totalClasses) || 0,
-        classesAttended: parseInt(data.classesattended || data.classesAttended) || 0,
-        overallPercentage: parseFloat(data.overallpercentage || data.overallPercentage) || 0,
+        totalClasses: totalClasses,
+        classesAttended: classesAttended,
+        overallPercentage: parseFloat(data.overallPercentage) || 0,
         lastUpdated: new Date().toLocaleDateString(),
-        courses: [{
-          courseName: data.subject,
-          present: parseInt(data.classesattended || data.classesAttended) || 0,
-          total: parseInt(data.totalclasses || data.totalClasses) || 0,
-          percentage: parseFloat(data.overallpercentage || data.overallPercentage) || 0
-        }]
+        courses: courses
       };
       
       setAttendanceData(transformedData);
