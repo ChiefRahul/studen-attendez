@@ -70,24 +70,44 @@ const Index = () => {
       // Handle array response - take first element
       const data = Array.isArray(responseData) ? responseData[0] : responseData;
       
-      // Transform subjectAttendance object into courses array
-      const CLASSES_PER_SUBJECT = 20; // Assumed number of classes per subject
-      const courses: CourseData[] = Object.entries(data.subjectAttendance || {}).map(
-        ([subjectName, percentage]: [string, any]) => {
-          const percentageValue = typeof percentage === 'number' ? percentage : parseFloat(String(percentage)) || 0;
-          const present = Math.round((percentageValue / 100) * CLASSES_PER_SUBJECT);
-          return {
-            courseName: subjectName,
-            present: present,
-            total: CLASSES_PER_SUBJECT,
-            percentage: percentageValue
-          };
-        }
-      );
+      // Check if we have subjectAttendance (new format) or individual subject (old format)
+      let courses: CourseData[] = [];
+      
+      if (data.subjectAttendance && typeof data.subjectAttendance === 'object') {
+        // New format with subjectAttendance object
+        const CLASSES_PER_SUBJECT = 20;
+        courses = Object.entries(data.subjectAttendance).map(
+          ([subjectName, percentage]: [string, any]) => {
+            const percentageValue = typeof percentage === 'number' ? percentage : parseFloat(String(percentage)) || 0;
+            const present = Math.round((percentageValue / 100) * CLASSES_PER_SUBJECT);
+            return {
+              courseName: subjectName,
+              present: present,
+              total: CLASSES_PER_SUBJECT,
+              percentage: percentageValue
+            };
+          }
+        );
+      } else if (data.subject && data.subject.trim()) {
+        // Old format with single subject
+        const total = parseInt(data.totalclasses || data.totalClasses) || 20;
+        const attended = parseInt(data.classesattended || data.classesAttended) || 0;
+        const percentage = attended > 0 ? Math.round((attended / total) * 100) : parseFloat(data.overallpercentage || data.overallPercentage) || 0;
+        
+        courses = [{
+          courseName: data.subject,
+          present: attended,
+          total: total,
+          percentage: percentage
+        }];
+      }
       
       // Calculate overall stats
-      const totalClasses = courses.length * CLASSES_PER_SUBJECT;
+      const totalClasses = courses.reduce((sum, course) => sum + course.total, 0) || 100;
       const classesAttended = courses.reduce((sum, course) => sum + course.present, 0);
+      const overallPercentage = totalClasses > 0 
+        ? Math.round((classesAttended / totalClasses) * 100)
+        : parseFloat(data.overallpercentage || data.overallPercentage || data.overallPercentage) || 0;
       
       // Transform N8N response to match our app's expected format
       const transformedData: AttendanceData = {
@@ -95,9 +115,14 @@ const Index = () => {
         studentId: data.id,
         totalClasses: totalClasses,
         classesAttended: classesAttended,
-        overallPercentage: parseFloat(data.overallPercentage) || 0,
+        overallPercentage: overallPercentage,
         lastUpdated: new Date().toLocaleDateString(),
-        courses: courses
+        courses: courses.length > 0 ? courses : [{
+          courseName: "No course data available",
+          present: 0,
+          total: 0,
+          percentage: overallPercentage
+        }]
       };
       
       setAttendanceData(transformedData);
